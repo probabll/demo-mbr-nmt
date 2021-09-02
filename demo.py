@@ -126,9 +126,13 @@ class Utility:
     Assign utility to a hypothesis.
     """
     
-    def __call__(self, src: str, ref: str, hyp: str) -> float:
+    def __call__(self, src: str, hyp: str, ref: str) -> float:
         """Return the utility (float) of hyp as a translation of src when ref is the correct/preferred translation)."""
         raise NotImplementedError("Implement me!")
+        
+    def batch(self, src: str, hyp: str, refs: list):
+        """Compute utility against a list of references"""
+        return np.array([self(src=src, hyp=hyp, ref=ref) for ref in refs])
                 
     
 class MBR:
@@ -144,7 +148,7 @@ class MBR:
                
     def mu(self, src: str, hyp: str):
         """Return an estimate of the expected utility of hyp given src"""
-        return np.mean([self.utility(src=src, ref=ref, hyp=hyp) for ref in self.sampler(src)])
+        return np.mean(self.utility.batch(src=src, hyp=hyp, refs=self.sampler(src)))
     
     def mus(self, src: str, hyp_space: list):
         """Return a numpy array as long as hyp_space, each cell is an estimate of the expected utility of the corresponding hypothesis given src."""
