@@ -3,7 +3,7 @@ import numpy as np
 from nmt import Pipeline, FairseqModel
 from tqdm import tqdm
 import numpy as np
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 Return = namedtuple('Return', ['pipeline_x', 'pipeline_y', 'x2y', 'y2x'])
 
@@ -119,7 +119,43 @@ class SampleFromNMT(Sampler):
         """Return a list of samples drawn independently from the NMT model"""
         r = self._model.ancestral_sampling(src, num_samples=self._sample_size)
         return r['output']
+    
+class CachedSampler(Sampler):
+    """
+    Every time we run __call__ with a new hypothesis, a number of samples will be drawn from the NMT model,
+    then either __call__ will return all these samples (if sample_size=None) or a subset drawn with replacement.
+    
+    This class implements a caching mechanism allowing us to reuse samples for calls that share the same hypothesis.
+    """
+    
+    def __init__(self, sampler: SampleFromNMT, sample_size: int, cache_max_size=1):
+        """
+        Parameters
+            model: a FairseqModel from source to target language
+            sample_size: a strictly positive integer            
+        """
+        self._sampler = sampler
+        self._cache = OrderedDict()
+        self._sample_size = sample_size
+        self._cache_max_size = cache_max_size
+        
+    def __call__(self, src: str):        
+        """Return a list of samples drawn independently from the NMT model"""
+        samples = self._cache.get(src, None)
+        if samples is None:
+            samples = self._sampler(src)
+            self._cache[src] = samples
+            if self.cache_max_size and len(self._cache) > self._cache_max_size:  # clear cache
+                self._cache.popitem(last=False)
+        if self._sample_size is None:
+            return samples
+        else:
+            indices = np.random.choice(len(samples), self._sample_size)
+            return [samples[i] for i in indices]
 
+    def reset(self):
+        self._cache = OrderedDict()
+        
 
 class Utility:
     """
