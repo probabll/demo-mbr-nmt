@@ -145,7 +145,7 @@ class CachedSampler(Sampler):
         if samples is None:
             samples = self._sampler(src)
             self._cache[src] = samples
-            if self.cache_max_size and len(self._cache) > self._cache_max_size:  # clear cache
+            if self._cache_max_size and len(self._cache) > self._cache_max_size:  # clear cache
                 self._cache.popitem(last=False)
         if self._sample_size is None:
             return samples
