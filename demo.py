@@ -5,7 +5,7 @@ from tqdm import tqdm
 import numpy as np
 from collections import namedtuple, OrderedDict
 
-Return = namedtuple('Return', ['pipeline_x', 'pipeline_y', 'x2y', 'y2x'])
+Return = namedtuple('Return', ['x', 'y', 'x2y'])
 
 
 def clean_corpus(corpus_x, corpus_y, tokenizer_x, tokenizer_y, max_length_x=None, max_length_y=None):
@@ -20,41 +20,35 @@ def clean_corpus(corpus_x, corpus_y, tokenizer_x, tokenizer_y, max_length_x=None
     return clean_x, clean_y
 
 
-def load_de_en(np_seed=None, torch_seed=None, device=torch.device('cpu')):
+def load(
+    src: str, tgt: str, 
+    np_seed=None, torch_seed=None, device=torch.device('cpu'), 
+    data_dir="models/fairseq/"):
+    """Load a pre-trained fairseq model and the src/tgt pre/post-processing pipelines."""
 
     rng = np.random.RandomState(seed=np_seed)
     if torch_seed is not None:
         torch.manual_seed(torch_seed)
 
-    pipeline_de = Pipeline(
-        "de", "data/pretrained-fairseq/de-en/truecaser/truecase-model.de",
+    src_pipeline = Pipeline(
+        src, f"{data_dir}/{src}-{tgt}/truecaser/truecase-model.{src}",
         True, True, True
     )
-    pipeline_en = Pipeline(
-        "en", "data/pretrained-fairseq/de-en/truecaser/truecase-model.en",
+    tgt_pipeline = Pipeline(
+        tgt, f"{data_dir}/{src}-{tgt}/truecaser/truecase-model.{tgt}",
         True, True, True
     )
-    deen = FairseqModel(
-        model_path='data/pretrained-fairseq/de-en/mle/', 
-        bin_path='data/pretrained-fairseq/de-en', 
-        src_spm="data/pretrained-fairseq/de-en/sentencepiece.bpe.model",
-        tgt_spm="data/pretrained-fairseq/de-en/sentencepiece.bpe.model",
-        src_pipeline=pipeline_de,
-        tgt_pipeline=pipeline_en,
+    src2tgt = FairseqModel(
+        model_path=f"{data_dir}/{src}-{tgt}/mle/", 
+        bin_path=f"{data_dir}/{src}-{tgt}", 
+        src_spm=f"{data_dir}/{src}-{tgt}/sentencepiece.bpe.model",
+        tgt_spm=f"{data_dir}/{src}-{tgt}/sentencepiece.bpe.model",
+        src_pipeline=src_pipeline,
+        tgt_pipeline=tgt_pipeline,
         device=device
-    )
-    ende = FairseqModel(
-        model_path='data/pretrained-fairseq/en-de/mle/', 
-        bin_path='data/pretrained-fairseq/en-de', 
-        src_spm="data/pretrained-fairseq/en-de/sentencepiece.bpe.model",
-        tgt_spm="data/pretrained-fairseq/en-de/sentencepiece.bpe.model",
-        src_pipeline=pipeline_en,
-        tgt_pipeline=pipeline_de,
-        device=device
-    )
+    )    
 
-    return Return(pipeline_x=pipeline_de, pipeline_y=pipeline_en, x2y=deen, y2x=ende)
-
+    return Return(x=src_pipeline, y=tgt_pipeline, x2y=src2tgt)
 
 
 class Sampler:
