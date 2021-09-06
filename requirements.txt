@@ -1,5 +1,8 @@
 torch
 numpy
+matplotlib
+tabulate
+tqdm
 fairseq==0.10.2
 sacrebleu==1.5.1
 sacremoses==0.0.43
