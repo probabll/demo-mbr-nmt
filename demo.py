@@ -41,8 +41,8 @@ def load(
     src2tgt = FairseqModel(
         model_path=f"{data_dir}/{src}-{tgt}/mle/", 
         bin_path=f"{data_dir}/{src}-{tgt}", 
-        src_spm=f"{data_dir}/{src}-{tgt}/sentencepiece.bpe.model",
-        tgt_spm=f"{data_dir}/{src}-{tgt}/sentencepiece.bpe.model",
+        src_spm=f"{data_dir}/{src}-{tgt}/sentencepiece.bpe.model.{src}",
+        tgt_spm=f"{data_dir}/{src}-{tgt}/sentencepiece.bpe.model.{tgt}",
         src_pipeline=src_pipeline,
         tgt_pipeline=tgt_pipeline,
         device=device
