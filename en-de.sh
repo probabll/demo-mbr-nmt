@@ -6,4 +6,6 @@ if [[ ! -f models/fairseq/en-de/mle/averaged_model.pt ]]; then
   tar -xvf models/fairseq/en-de.tar -C models/fairseq/
   rm models/fairseq/en-de.tar
   echo "Check: models/fairseq/en-de"
+else
+  echo "Check: models/fairseq/en-de"
 fi
