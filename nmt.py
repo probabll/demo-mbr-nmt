@@ -61,7 +61,7 @@ class FairseqModel:
         self.tgt_pipeline = tgt_pipeline
         # Tokenization into segments known by the NMT engine
         self.src_spm = spm.SentencePieceProcessor(model_file=src_spm)
-        self.tgt_spm = spm.SentencePieceProcessor(model_file=src_spm)        
+        self.tgt_spm = spm.SentencePieceProcessor(model_file=tgt_spm)        
         # Model
         self.model = TransformerModel.from_pretrained(
             model_path, 
