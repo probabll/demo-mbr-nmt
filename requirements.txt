@@ -1,6 +1,6 @@
+torch
+numpy
 fairseq==0.10.2
-torch==1.8.0
 sacrebleu==1.5.1
 sacremoses==0.0.43
 sentencepiece==0.1.95
-numpy
