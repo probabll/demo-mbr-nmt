@@ -211,10 +211,17 @@ class FairseqModel:
 
         return results
     
-    def surprisal(self, src: str, tgt: str):
-        return self.batch_surprisal([src], [tgt])
+    def surprisal(self, src: str, tgt: str, no_grad=True):
+        return self.batch_surprisal([src], [tgt], no_grad=no_grad)
         
-    def batch_surprisal(self, src_corpus: List[str], tgt_corpus: List[str]):
+    def batch_surprisal(self, src_corpus: List[str], tgt_corpus: List[str], no_grad=True):
+        if no_grad:
+            with torch.no_grad():
+                return self._batch_surprisal(src_corpus, tgt_corpus)
+        else:
+            return self._batch_surprisal(src_corpus, tgt_corpus)
+        
+    def _batch_surprisal(self, src_corpus: List[str], tgt_corpus: List[str]):
         """
         :param src: a list of sentences (each a string)
         :param tgt: a list of sentences (each a string)
@@ -226,51 +233,51 @@ class FairseqModel:
                 (use lengths to mask this along the time dimension before analysing)
             - fairseq: None
         """
-        with torch.no_grad():
-            src_tokens = collate_tokens(
-                values=[self.encode_src(s) for s in src_corpus],
-                pad_idx=self.model.src_dict.pad_index,
-                eos_idx=None,
-                left_pad=False,
-                move_eos_to_beginning=False,
-                pad_to_length=None,
-                pad_to_multiple=1,
-            ).to(self.device)
-            src_lengths = (src_tokens != self.model.src_dict.pad_index).sum(-1)
-            
-            tgt_bin = [self.encode_tgt(s) for s in tgt_corpus]
-            # this is the target output
-            tgt_tokens = collate_tokens(
-                values=tgt_bin,
-                pad_idx=self.model.tgt_dict.pad_index,
-                eos_idx=self.model.tgt_dict.eos_index,
-                left_pad=False,
-                move_eos_to_beginning=False,
-                pad_to_length=None,
-                pad_to_multiple=1,
-            ).to(self.device)
-            tgt_lengths = (tgt_tokens != self.model.tgt_dict.pad_index).sum(-1)
-            
-            # this is the target input
-            prev_tgt_tokens = collate_tokens(
-                values=tgt_bin,
-                pad_idx=self.model.tgt_dict.pad_index,
-                eos_idx=self.model.tgt_dict.eos_index,
-                left_pad=False,
-                move_eos_to_beginning=True,
-                pad_to_length=None,
-                pad_to_multiple=1,
-            ).to(self.device)
+        
+        src_tokens = collate_tokens(
+            values=[self.encode_src(s) for s in src_corpus],
+            pad_idx=self.model.src_dict.pad_index,
+            eos_idx=None,
+            left_pad=False,
+            move_eos_to_beginning=False,
+            pad_to_length=None,
+            pad_to_multiple=1,
+        ).to(self.device)
+        src_lengths = (src_tokens != self.model.src_dict.pad_index).sum(-1)
 
-            logits, _ = self.model.models[0](src_tokens, src_lengths, prev_tgt_tokens)
-            entropies = torch.distributions.Categorical(logits=logits).entropy()
-            surprisals = torch.nn.functional.cross_entropy(
-                input=logits.permute(0 ,2, 1),
-                target=tgt_tokens,
-                ignore_index=self.model.tgt_dict.pad_index,
-                reduction="none",
-            ).sum(-1)           
-            
-            return dict(output=tgt_corpus, surprisal=surprisals, length=tgt_lengths, entropy=entropies, fairseq=None)
+        tgt_bin = [self.encode_tgt(s) for s in tgt_corpus]
+        # this is the target output
+        tgt_tokens = collate_tokens(
+            values=tgt_bin,
+            pad_idx=self.model.tgt_dict.pad_index,
+            eos_idx=self.model.tgt_dict.eos_index,
+            left_pad=False,
+            move_eos_to_beginning=False,
+            pad_to_length=None,
+            pad_to_multiple=1,
+        ).to(self.device)
+        tgt_lengths = (tgt_tokens != self.model.tgt_dict.pad_index).sum(-1)
+
+        # this is the target input
+        prev_tgt_tokens = collate_tokens(
+            values=tgt_bin,
+            pad_idx=self.model.tgt_dict.pad_index,
+            eos_idx=self.model.tgt_dict.eos_index,
+            left_pad=False,
+            move_eos_to_beginning=True,
+            pad_to_length=None,
+            pad_to_multiple=1,
+        ).to(self.device)
+
+        logits, _ = self.model.models[0](src_tokens, src_lengths, prev_tgt_tokens)
+        entropies = torch.distributions.Categorical(logits=logits).entropy()
+        surprisals = torch.nn.functional.cross_entropy(
+            input=logits.permute(0 ,2, 1),
+            target=tgt_tokens,
+            ignore_index=self.model.tgt_dict.pad_index,
+            reduction="none",
+        ).sum(-1)           
+
+        return dict(output=tgt_corpus, surprisal=surprisals, length=tgt_lengths, entropy=entropies, fairseq=None)
 
 
