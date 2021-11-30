@@ -271,13 +271,14 @@ class FairseqModel:
 
         logits, _ = self.model.models[0](src_tokens, src_lengths, prev_tgt_tokens)
         entropies = torch.distributions.Categorical(logits=logits).entropy()
-        surprisals = torch.nn.functional.cross_entropy(
+        scores = torch.nn.functional.cross_entropy(
             input=logits.permute(0 ,2, 1),
             target=tgt_tokens,
             ignore_index=self.model.tgt_dict.pad_index,
             reduction="none",
-        ).sum(-1)           
+        )
+        surprisals = scores.sum(-1)           
 
-        return dict(output=tgt_corpus, surprisal=surprisals, length=tgt_lengths, entropy=entropies, fairseq=None)
+        return dict(output=tgt_corpus, surprisal=surprisals, length=tgt_lengths, entropy=entropies, fairseq={'positional_scores': surprisals})
 
 
